@@ -1,4 +1,10 @@
-use rocket::serde::{json::Json, Serialize};
+use std::ops::DerefMut;
+
+use rocket::{
+    fairing::{self, AdHoc},
+    serde::{json::Json, Serialize},
+    Build, Rocket,
+};
 use rocket_db_pools::{
     deadpool_postgres::{self, tokio_postgres::Row},
     Connection, Database,
@@ -57,9 +63,27 @@ async fn index(db: Connection<MyDatabase>) -> Json<Vec<Table>> {
 #[database("public")]
 struct MyDatabase(deadpool_postgres::Pool);
 
+mod embedded {
+    use refinery::embed_migrations;
+    embed_migrations!("sql");
+}
+
+async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
+    if let Some(db) = MyDatabase::fetch(&rocket) {
+        let mut conn = db.0.get().await.unwrap();
+        let client = conn.deref_mut().deref_mut();
+        let report = embedded::migrations::runner().run_async(client).await;
+        println!("{:#?}", report);
+        Ok(rocket)
+    } else {
+        Err(rocket)
+    }
+}
+
 #[launch]
 fn rocket() -> _ {
     rocket::build()
         .attach(MyDatabase::init())
+        .attach(AdHoc::try_on_ignite("DB Migrations", run_migrations))
         .mount("/", routes![index])
 }
