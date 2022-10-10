@@ -1,0 +1,18 @@
+[package]
+name = "rocket-postgres-prototype"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.deadpool]
+version = "0.9.5"
+features = ["managed"]
+
+[dependencies.rocket_db_pools]
+version = "0.1.0-rc.2"
+features = ["deadpool_postgres"]
+
+[dependencies.rocket]
+version = "0.5.0-rc.2"
+features = ["json", "msgpack", "uuid"]
